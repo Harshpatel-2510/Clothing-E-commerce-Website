@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
+const fetchuser = require('../middleware/fetchuser');
 
-// 1. ADD PRODUCT (Ab bina vendor ID ke direct add hoga)
-router.post('/add', async (req, res) => {
+// 1. ADD PRODUCT (Sirf Admin ke liye)
+router.post('/add', fetchuser, async (req, res) => {
   try {
+    // Check karo ki user admin hai ya nahi
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Aapko product add karne ki permission nahi hai! 🚫" });
+    }
+
     const { name, description, price, category, stock, images } = req.body;
 
     const newProduct = new Product({
@@ -17,17 +23,17 @@ router.post('/add', async (req, res) => {
     });
 
     await newProduct.save();
-    res.status(201).json({ message: "Product successfully add ho gaya! 📦", product: newProduct });
+    res.status(201).json({ message: "Admin saab, Product successfully add ho gaya! 📦", product: newProduct });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server me koi gadbad hui hai." });
   }
 });
 
-// 2. GET ALL PRODUCTS (Saare products dekhne ke liye)
+// 2. GET ALL PRODUCTS (Sabke liye - bina login ke)
 router.get('/all', async (req, res) => {
   try {
-    const products = await Product.find(); // Ab populate karne ki zaroorat nahi hai
+    const products = await Product.find(); 
     res.status(200).json(products);
   } catch (error) {
     console.error(error);
@@ -35,13 +41,17 @@ router.get('/all', async (req, res) => {
   }
 });
 
-// 3. UPDATE PRODUCT (Product badalne ke liye - URL me ID bhejenge)
-router.put('/update/:id', async (req, res) => {
+// 3. UPDATE PRODUCT (Sirf Admin ke liye)
+router.put('/update/:id', fetchuser, async (req, res) => {
   try {
+    // Admin Check
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access Denied! Aap admin nahi hain. 🚫" });
+    }
+
     const productId = req.params.id;
     const updatedData = req.body;
 
-    // findByIdAndUpdate database me id dhoond kar use naye data se badal deta hai
     const updatedProduct = await Product.findByIdAndUpdate(productId, updatedData, { new: true });
 
     if (!updatedProduct) {
@@ -55,9 +65,14 @@ router.put('/update/:id', async (req, res) => {
   }
 });
 
-// 4. DELETE PRODUCT (Product hatane ke liye - URL me ID bhejenge)
-router.delete('/delete/:id', async (req, res) => {
+// 4. DELETE PRODUCT (Sirf Admin ke liye)
+router.delete('/delete/:id', fetchuser, async (req, res) => {
   try {
+    // Admin Check
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access Denied! Aap admin nahi hain. 🚫" });
+    }
+
     const productId = req.params.id;
 
     const deletedProduct = await Product.findByIdAndDelete(productId);
